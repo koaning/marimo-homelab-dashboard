@@ -1,0 +1,79 @@
+# Hosting marimo dashboards on your home server
+
+This guide walks you through running [marimo](https://marimo.io) notebooks on a home server, accessible from any of your devices via [Tailscale](https://tailscale.com). Every `git push` can auto-deploy within a minute.
+
+## Prerequisites
+
+- A Linux machine with SSH access (e.g. a Raspberry Pi, old laptop, or mini PC)
+- Docker installed ([docs](https://docs.docker.com/engine/install/))
+- A free [Tailscale](https://tailscale.com) account
+
+## Step 1 — Install Tailscale on your server
+
+SSH into your server and run:
+
+```bash
+curl -fsSL https://tailscale.com/install.sh | sh
+sudo tailscale up
+```
+
+Follow the link to authorize the device. Then note your Tailscale IP:
+
+```bash
+tailscale ip -4
+```
+
+You can also find the IP or hostname in the [Tailscale admin console](https://login.tailscale.com/admin/machines).
+
+## Step 2 — Clone and run
+
+```bash
+git clone <your-repo-url>
+cd marimo-homelab
+docker build -t marimo-dashboards .
+docker run -d --name marimo --restart unless-stopped -p 8000:8000 marimo-dashboards
+```
+
+The `--restart unless-stopped` flag ensures the container comes back after a reboot.
+
+## Step 3 — Access from anywhere
+
+1. Install Tailscale on your phone, laptop, or any device you want to use.
+2. Open your browser and go to:
+
+```
+http://<tailscale-ip>:8000
+```
+
+You should see the stocks demo notebook.
+
+## Step 4 — Auto-deploy (optional)
+
+The included `deploy.sh` script checks for new commits and rebuilds the container only when something has changed. Wire it up to cron to run every minute:
+
+```bash
+crontab -e
+```
+
+Add this line (replace the path with where you cloned the repo):
+
+```
+* * * * * flock -n /tmp/marimo-deploy.lock /path/to/marimo-homelab/deploy.sh >> /var/log/marimo-deploy.log 2>&1
+```
+
+That's it. Every minute cron will run `deploy.sh`, which does a cheap `git fetch` and exits immediately if there are no new commits. When you `git push`, the next tick will pull, rebuild, and restart the container.
+
+The `flock -n` prevents overlapping runs if a build takes longer than a minute.
+
+Tail the log to watch deploys as they happen:
+
+```bash
+tail -f /var/log/marimo-deploy.log
+```
+
+## Tips
+
+- **No port forwarding needed.** Tailscale creates a private WireGuard mesh network between your devices. Your server is never exposed to the public internet.
+- **HTTPS is available** via `tailscale cert` if you want encrypted connections within your tailnet.
+- **Add more notebooks** by dropping `.py` files into the `notebooks/` directory. Each notebook declares its own dependencies via [PEP 723](https://peps.python.org/pep-0723/) inline metadata — no shared `requirements.txt` needed.
+- **Check the deploy log** at `/var/log/marimo-deploy.log` if something goes wrong during auto-deploy.
