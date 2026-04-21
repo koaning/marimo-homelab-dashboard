@@ -1,6 +1,6 @@
 # Hosting marimo dashboards on your home server
 
-This guide walks you through running [marimo](https://marimo.io) notebooks on a home server, accessible from any of your devices via [Tailscale](https://tailscale.com). Every `git push` can auto-deploy within 30 seconds.
+This guide walks you through running [marimo](https://marimo.io) notebooks on a home server, accessible from any of your devices via [Tailscale](https://tailscale.com). Every `git push` can auto-deploy within a minute.
 
 ## Prerequisites
 
@@ -49,42 +49,31 @@ You should see the stocks demo notebook.
 
 ## Step 4 — Auto-deploy (optional)
 
-The included `watch-docker.sh` script polls git every 30 seconds and rebuilds the container when new commits arrive. To run it as a system service:
-
-1. Create a systemd unit file:
+The included `deploy.sh` script checks for new commits and rebuilds the container only when something has changed. Wire it up to cron to run every minute:
 
 ```bash
-sudo tee /etc/systemd/system/marimo-watcher.service > /dev/null <<EOF
-[Unit]
-Description=Watch for marimo dashboard updates
-After=network-online.target docker.service
-Wants=network-online.target
-
-[Service]
-Type=simple
-WorkingDirectory=/path/to/marimo-homelab
-ExecStart=/path/to/marimo-homelab/watch-docker.sh
-Restart=always
-RestartSec=10
-
-[Install]
-WantedBy=multi-user.target
-EOF
+crontab -e
 ```
 
-2. Update the paths in the file above, then enable and start the service:
+Add this line (replace the path with where you cloned the repo):
+
+```
+* * * * * flock -n /tmp/marimo-deploy.lock /path/to/marimo-homelab/deploy.sh >> /var/log/marimo-deploy.log 2>&1
+```
+
+That's it. Every minute cron will run `deploy.sh`, which does a cheap `git fetch` and exits immediately if there are no new commits. When you `git push`, the next tick will pull, rebuild, and restart the container.
+
+The `flock -n` prevents overlapping runs if a build takes longer than a minute.
+
+Tail the log to watch deploys as they happen:
 
 ```bash
-sudo systemctl daemon-reload
-sudo systemctl enable marimo-watcher
-sudo systemctl start marimo-watcher
+tail -f /var/log/marimo-deploy.log
 ```
-
-Now every `git push` to your repo will auto-deploy within 30 seconds.
 
 ## Tips
 
 - **No port forwarding needed.** Tailscale creates a private WireGuard mesh network between your devices. Your server is never exposed to the public internet.
 - **HTTPS is available** via `tailscale cert` if you want encrypted connections within your tailnet.
 - **Add more notebooks** by dropping `.py` files into the `notebooks/` directory. Each notebook declares its own dependencies via [PEP 723](https://peps.python.org/pep-0723/) inline metadata — no shared `requirements.txt` needed.
-- **Check the watcher logs** with `journalctl -u marimo-watcher -f` if something goes wrong during auto-deploy.
+- **Check the deploy log** at `/var/log/marimo-deploy.log` if something goes wrong during auto-deploy.
