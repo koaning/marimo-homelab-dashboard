@@ -1,5 +1,7 @@
 # Hosting marimo dashboards on your home server
 
+> The goal is simplicity. 
+
 This guide walks you through running [marimo](https://marimo.io) notebooks on a home server, accessible from any of your devices via [Tailscale](https://tailscale.com). Every `git push` can auto-deploy within a minute.
 
 ## Prerequisites
@@ -118,4 +120,4 @@ If the file never appears, cron isn't running your line. Check these in order:
 - **No port forwarding needed.** Tailscale creates a private WireGuard mesh network between your devices. Your server is never exposed to the public internet.
 - **HTTPS** is covered by Step 4 above (`tailscale serve`). For a bare certificate without the proxy, `tailscale cert` is the lower-level alternative.
 - **Add more notebooks** by dropping `.py` files into the `notebooks/` directory. Each notebook declares its own dependencies via [PEP 723](https://peps.python.org/pep-0723/) inline metadata — no shared `requirements.txt` needed.
-- **Check the deploy log** at `~/marimo-deploy.log` if something goes wrong during auto-deploy.
+- **Check the deploy log live** via `tail -f ~/marimo-deploy.log` and make a change to the readme of your fork. If you wait a minute you should see the build appear. 
