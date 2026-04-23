@@ -1,3 +1,4 @@
 .env
 **/__marimo__/*.html
 invest-data/
+.DS_Store

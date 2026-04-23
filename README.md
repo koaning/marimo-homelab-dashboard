@@ -47,7 +47,31 @@ http://<tailscale-ip>:8000
 
 You should see the stocks demo notebook.
 
-## Step 4 — Auto-deploy (optional)
+## Step 4 — Enable HTTPS via Tailscale Serve (optional)
+
+Raw `http://<tailscale-ip>:8000` works, but a MagicDNS hostname with a real TLS certificate is nicer — especially on mobile browsers, where some WebSocket features behave better over HTTPS. Tailscale Serve handles both in one command.
+
+Prerequisite: enable HTTPS for your tailnet in the [admin console → DNS → HTTPS Certificates](https://login.tailscale.com/admin/dns).
+
+On the server:
+
+```bash
+sudo tailscale serve --bg http://localhost:8000
+```
+
+The dashboard is now reachable at:
+
+```
+https://<your-server-hostname>.<your-tailnet>.ts.net
+```
+
+- `--bg` persists the config, so it comes back after a reboot.
+- Inspect with `tailscale serve status`.
+- Tear down with `sudo tailscale serve reset`.
+
+The original `http://<tailscale-ip>:8000` URL keeps working — Serve is layered on top of the container's published port, not a replacement.
+
+## Step 5 — Auto-deploy (optional)
 
 The included `deploy.sh` script checks for new commits and rebuilds the container only when something has changed. Wire it up to cron to run every minute:
 
@@ -74,6 +98,6 @@ tail -f /var/log/marimo-deploy.log
 ## Tips
 
 - **No port forwarding needed.** Tailscale creates a private WireGuard mesh network between your devices. Your server is never exposed to the public internet.
-- **HTTPS is available** via `tailscale cert` if you want encrypted connections within your tailnet.
+- **HTTPS** is covered by Step 4 above (`tailscale serve`). For a bare certificate without the proxy, `tailscale cert` is the lower-level alternative.
 - **Add more notebooks** by dropping `.py` files into the `notebooks/` directory. Each notebook declares its own dependencies via [PEP 723](https://peps.python.org/pep-0723/) inline metadata — no shared `requirements.txt` needed.
 - **Check the deploy log** at `/var/log/marimo-deploy.log` if something goes wrong during auto-deploy.
