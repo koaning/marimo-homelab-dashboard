@@ -102,4 +102,4 @@ tail -f /var/log/marimo-deploy.log
 - **No port forwarding needed.** Tailscale creates a private WireGuard mesh network between your devices. Your server is never exposed to the public internet.
 - **HTTPS** is covered by Step 4 above (`tailscale serve`). For a bare certificate without the proxy, `tailscale cert` is the lower-level alternative.
 - **Add more notebooks** by dropping `.py` files into the `notebooks/` directory. Each notebook declares its own dependencies via [PEP 723](https://peps.python.org/pep-0723/) inline metadata — no shared `requirements.txt` needed.
-- **Check the deploy log** at `/var/log/marimo-deploy.log` if something goes wrong during auto-deploy.
+- **Check the deploy log live** via `tail -f ~/marimo-deploy.log` and make a change to the readme of your fork. If you wait a minute you should see the build appear. 
