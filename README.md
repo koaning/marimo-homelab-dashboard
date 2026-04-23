@@ -79,25 +79,43 @@ The included `deploy.sh` script checks for new commits and rebuilds the containe
 crontab -e
 ```
 
-Add this line (replace the path with where you cloned the repo):
+First, find the absolute path to `deploy.sh` — you'll need it in the cron line:
+
+```bash
+realpath ./deploy.sh
+```
+
+Copy that output. Then add this line to your crontab, **replacing `<PASTE-PATH-HERE>` with the path you just copied**:
 
 ```
-* * * * * flock -n /tmp/marimo-deploy.lock /path/to/marimo-homelab/deploy.sh >> /var/log/marimo-deploy.log 2>&1
+* * * * * flock -n /tmp/marimo-deploy.lock <PASTE-PATH-HERE> >> $HOME/marimo-deploy.log 2>&1
 ```
+
+> ⚠️ Common mistake: don't leave a placeholder like `/path/to/...` in the crontab. Cron will silently fail every minute and no log file will ever appear.
 
 That's it. Every minute cron will run `deploy.sh`, which does a cheap `git fetch` and exits immediately if there are no new commits. When you `git push`, the next tick will pull, rebuild, and restart the container.
 
-The `flock -n` prevents overlapping runs if a build takes longer than a minute.
+The `flock -n` prevents overlapping runs if a build takes longer than a minute. The log lives in your home directory so no `sudo` is needed to write it.
 
-Tail the log to watch deploys as they happen:
+### Verify it's working
+
+Wait a minute, then tail the log:
 
 ```bash
-tail -f /var/log/marimo-deploy.log
+tail -f ~/marimo-deploy.log
 ```
+
+You should see output within ~60 seconds — either "deploying..." messages or nothing (which is normal when there's nothing to do and the container is running).
+
+If the file never appears, cron isn't running your line. Check these in order:
+
+1. **Make sure your crontab line uses the real absolute path**, not a `~` or `$HOME` — cron doesn't always expand those in the *command* position. (It does expand them in `>>` redirection on most systems, but the safest bet is to hard-code the script path.)
+2. **Check cron's own log** for errors: `grep CRON /var/log/syslog | tail` (Debian/Ubuntu) or `journalctl -u cron --since '5 min ago'`.
+3. **Make sure your user can talk to Docker** without sudo: `docker info`. If it fails, run `sudo usermod -aG docker $USER`, then log out and back in. The updated `deploy.sh` will now print a clear error if this is the problem.
 
 ## Tips
 
 - **No port forwarding needed.** Tailscale creates a private WireGuard mesh network between your devices. Your server is never exposed to the public internet.
 - **HTTPS** is covered by Step 4 above (`tailscale serve`). For a bare certificate without the proxy, `tailscale cert` is the lower-level alternative.
 - **Add more notebooks** by dropping `.py` files into the `notebooks/` directory. Each notebook declares its own dependencies via [PEP 723](https://peps.python.org/pep-0723/) inline metadata — no shared `requirements.txt` needed.
-- **Check the deploy log** at `/var/log/marimo-deploy.log` if something goes wrong during auto-deploy.
+- **Check the deploy log** at `~/marimo-deploy.log` if something goes wrong during auto-deploy.
