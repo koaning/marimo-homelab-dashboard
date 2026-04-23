@@ -1,5 +1,7 @@
 # Hosting marimo dashboards on your home server
 
+> The goal is simplicity. 
+
 This guide walks you through running [marimo](https://marimo.io) notebooks on a home server, accessible from any of your devices via [Tailscale](https://tailscale.com). Every `git push` can auto-deploy within a minute.
 
 ## Prerequisites
