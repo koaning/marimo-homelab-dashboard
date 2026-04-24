@@ -93,8 +93,6 @@ Copy that output. Then add this line to your crontab, **replacing `<PASTE-PATH-H
 * * * * * flock -n /tmp/marimo-deploy.lock <PASTE-PATH-HERE> >> $HOME/marimo-deploy.log 2>&1
 ```
 
-> ⚠️ Common mistake: don't leave a placeholder like `/path/to/...` in the crontab. Cron will silently fail every minute and no log file will ever appear.
-
 That's it. Every minute cron will run `deploy.sh`, which does a cheap `git fetch` and exits immediately if there are no new commits. When you `git push`, the next tick will pull, rebuild, and restart the container.
 
 The `flock -n` prevents overlapping runs if a build takes longer than a minute. The log lives in your home directory so no `sudo` is needed to write it.
